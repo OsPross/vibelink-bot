@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ActionType {
+  WARN
+  MUTE
+  KICK
+  BAN
+  UNWARN
+  UNMUTE
+  UNBAN
+}
+
+model Guild {
+  id                    String      @id
+  language              String      @default("en")
+  
+  // Moduł Powitań
+  welcomeEnabled        Boolean     @default(false)
+  welcomeChannel        String?
+  welcomeMessage        String      @default("Siema {user} na serwerze!")
+  welcomeImage          String?     // Link do tła powitania
+  welcomeColor          String      @default("#5865F2") // Kolor paska embeda
+  
+  // Moduł Auto-Voice
+  voiceSetupEnabled     Boolean     @default(false)
+  voiceSetupChannelId   String?     // ID kanału "➕ Stwórz kanał"
+  voiceSetupCategoryId  String?     // ID kategorii, gdzie bot ma tworzyć nowe kanały
+  
+  autoModLogChannel     String      @default("")
+  antiLinkEnabled       Boolean     @default(false)
+  antiSpamEnabled       Boolean     @default(false)
+  bannedWords           String      @default("")
+
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  actions               ModAction[]
+  ticketPanels          TicketPanel[] // Relacja do nowych ticketów
+  rolePanels         RolePanel[]
+  // System Logów (Wielki Brat)
+  logMessageEnabled   Boolean  @default(false)
+  logMessageChannelId String   @default("")
+  
+  logVoiceEnabled     Boolean  @default(false)
+  logVoiceChannelId   String   @default("")
+  
+  logMemberEnabled    Boolean  @default(false)
+  logMemberChannelId  String   @default("")
+}
+
+model ModAction {
+  id          Int        @id @default(autoincrement())
+  guild       Guild      @relation(fields: [guildId], references: [id])
+  guildId     String
+  type        ActionType
+  userId      String
+  moderatorId String
+  reason      String     @default("No reason provided")
+  createdAt   DateTime   @default(now())
+}
+
+// NOWA TABELA NA TICKETY (WIELE PANELI)
+model TicketPanel {
+  id                  String   @id @default(cuid())
+  guildId             String
+  guild               Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  
+  name                String   @default("Nowy Panel Ticketów")
+  enabled             Boolean  @default(false)
+  panelChannelId      String   @default("")
+  categoryId          String   @default("")
+  supportRoleIds      String   @default("") // Role wsparcia oddzielone przecinkiem
+  
+  title               String   @default("Wsparcie / Support")
+  message             String   @default("Kliknij przycisk poniżej, aby otworzyć ticket.")
+  
+  // Opcje transkrypcji
+  transcriptEnabled   Boolean  @default(false)
+  transcriptChannelId String   @default("")
+  transcriptDmEnabled Boolean  @default(false)
+  embedColor          String   @default("#5865F2")
+  buttonText          String   @default("Otwórz Ticket")
+  buttonColor         String   @default("Primary") // Primary, Secondary, Success, Danger
+  buttonEmoji         String   @default("🎫")
+}
+
+model RolePanel {
+  id          String       @id @default(cuid())
+  guildId     String
+  guild       Guild        @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  name        String       @default("Nowy Panel Rol")
+  channelId   String       @default("")
+  title       String       @default("Wybierz Role")
+  description String       @default("Kliknij przycisk, aby odebrać lub oddać rolę.")
+  color       String       @default("#5865F2")
+  options     RoleOption[] // Relacja do przycisków
+}
+
+model RoleOption {
+  id          String    @id @default(cuid())
+  panelId     String
+  panel       RolePanel @relation(fields: [panelId], references: [id], onDelete: Cascade)
+  roleId      String
+  label       String    @default("Rola")
+  emoji       String?
+  style       String    @default("Primary") // Primary, Success, Danger, Secondary
+}
